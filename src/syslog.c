@@ -399,26 +399,25 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
 
   size_t num_structured_data;
   char ** structured_data = parse_context_get_structured_data_elements(&ctx, &num_structured_data);
-  if (!structured_data) {
-		free_syslog_message_t(message);
-		return false;
-  }
+  if (structured_data) {
 
-  if (num_structured_data < 1) {
-    message->structured_data = NULL;
-    message->structured_data_count = 0;
-  } else {
-    message->structured_data_count = num_structured_data;
-    message->structured_data = get_structured_data(structured_data, num_structured_data);
-  }
+	  if (num_structured_data < 1) {
+	    message->structured_data = NULL;
+	    message->structured_data_count = 0;
+	  } else {
+	    message->structured_data_count = num_structured_data;
+	    message->structured_data = get_structured_data(structured_data, num_structured_data);
+	  }
 
-	// Need to free that char**
-	for (size_t si = 0; si < num_structured_data; si++) {
-		free(structured_data[si]);
+		// Need to free that char**
+		for (size_t si = 0; si < num_structured_data; si++) {
+			free(structured_data[si]);
+		}
+
+		// And the wrapper
+		free(structured_data);
+
 	}
-
-	// And the wrapper
-	free(structured_data);
 
   // --- MSG
   // Rest of the data is the message
