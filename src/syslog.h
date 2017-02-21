@@ -18,6 +18,10 @@
 #define PRI_VALUES_COUNT 24
 #define EQUALS '='
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 typedef struct syslog_extended_property_value_t {
   char* key;
   char* value;
@@ -57,5 +61,9 @@ typedef struct syslog_message_t {
 
 bool parse_syslog(const char*, syslog_message_t*);
 void free_syslog_message_t(syslog_message_t * syslog_message);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
