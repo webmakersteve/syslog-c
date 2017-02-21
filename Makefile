@@ -23,5 +23,7 @@ print-%  : ; @echo $* = $($*)
 clean:
 	rm src/*.o tests/*.o
 
-tests: $(TESTSRC)
+test: $(TESTSRC)
 	$(CC) -I src/ $(CFLAGS) $(SRC) $(TESTSRC) -o runtests
+	./runtests
+	rm runtests

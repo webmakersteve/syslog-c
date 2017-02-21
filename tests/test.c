@@ -13,5 +13,5 @@ int main(int argc, char** argv) {
 	printf("PID: %s\n", msg.process_id);
 	printf("Message: %s\n", msg.message);
 
-	printf("Num of structured data elements: %d", msg.structured_data_count);
+	printf("Num of structured data elements: %lu\n", msg.structured_data_count);
 }
