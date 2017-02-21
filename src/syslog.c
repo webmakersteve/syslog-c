@@ -1,9 +1,5 @@
 #include "syslog.h"
 
-void logln(char* str) {
-  printf("%s\n", str);
-}
-
 typedef struct syslog_parse_context_t {
   const char * message;
   int pointer;
@@ -152,11 +148,8 @@ char** parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, 
     if (sd) {
       datas[*num_elements] = (char*) malloc(strlen(sd) + 1);
       strcpy(datas[*num_elements], sd);
-      logln(datas[*num_elements]);
       *num_elements = *num_elements + 1;
-    } else {
-			logln("Did not get any structured data from that piece");
-		}
+    }
   }
 
   // If we are at EOL
@@ -192,14 +185,12 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   // SD-ID
   char* sd_id = parse_context_next_until_with_escapes(&ctx, SEPARATOR, true, true);
   if (!sd_id) {
-    logln("There is no sd_id");
     return 0;
   }
 
   property->id = sd_id;
 
   if (parse_context_is_eol(&ctx)) {
-    logln("The entire thing is a sd_id");
     // This means the entire thing is the sd_id, as in
     // [exampleSDID@32473]
     // so it gets an empty value set and we're done.
@@ -215,7 +206,6 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     char* key = parse_context_next_until(&ctx, EQUALS, false);
     if (!key || strlen(key) == 0) {
       // Invalid because we need a key and value
-      logln("Invalid because we need a key and value");
       break;
     }
 
@@ -223,14 +213,12 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     char quote = 0;
     if (!parse_context_one(&ctx, &quote) || quote != QUOTE) {
       // needs to be a quote
-      logln("Invalid because value does not start with a quote");
       break;
     }
 
     char* value = parse_context_next_until_with_escapes(&ctx, QUOTE, true, false);
     if (!value) {
       // No ending quote? What's wrong with you! courtsey of @dareed
-      logln("Invalid because there is no closing quote");
       break;
     }
 
@@ -238,14 +226,9 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
     property->pairs[num_elements] = (syslog_extended_property_value_t) {key, value};
 
-    logln(key);
-    logln(value);
-
     if (!parse_context_is_eol(&ctx)) {
-      logln("Parse context is not EOL");
       char next = 0;
       if (!parse_context_one(&ctx, &next) || next != SEPARATOR) {
-        logln("Does not have a separator");
         break;
       }
     }
@@ -268,8 +251,6 @@ syslog_extended_property_t * get_structured_data(char** structured_data_elements
     char* st_element = structured_data_elements[i];
     if (parse_structured_data_element(st_element, &properties[ep_num])) {
       ep_num++;
-    } else {
-      logln("It did not work");
     }
   }
 
@@ -319,50 +300,47 @@ char* filter_nil(char* s) {
   return s;
 }
 
-syslog_message_t parse_syslog(const char* raw_message, size_t size) {
-  syslog_message_t message = {};
+bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   syslog_parse_context_t ctx = create_parse_context(raw_message);
 
   // --- PRI
   char buf = 0;
   if (!parse_context_one(&ctx, &buf)) {
-    return message;
+    return false;
   }
 
   if (buf != '<') {
-    return message;
+    return false;
   }
 
   char* pri_string = parse_context_next_until(&ctx, '>', false);
 
   if (!pri_string) {
-    return message;
+    return false;
   }
 
   int pri_value = atoi(pri_string);
 
   if (pri_value < 0 || pri_value > 191) {
-    return message;
+    return false;
   }
 
   int facility_id = get_facility_id(pri_value);
   // Omg we got our first syslog value
-  message.pri_value = pri_value;
-  message.facility = facility_id / 8;
-  message.severity = pri_value - facility_id;
+  message->pri_value = pri_value;
+  message->facility = facility_id / 8;
+  message->severity = pri_value - facility_id;
 
   // --- VERSION
-  message.syslog_version = parse_context_next_until(&ctx, SEPARATOR, false);
-  if (!message.syslog_version || strlen(message.syslog_version) > 2) {
-    logln("Failed because syslog version");
-    return message;
+  message->syslog_version = parse_context_next_until(&ctx, SEPARATOR, false);
+  if (!message->syslog_version || strlen(message->syslog_version) > 2) {
+		return false;
   }
 
   // --- TIMESTAMP
   char* timestamp = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!timestamp) {
-    logln("Failed because no timestamp");
-    return message;
+		return false;
   }
 
   if (strlen(timestamp) == 1 && timestamp[0] == 0) {
@@ -370,68 +348,59 @@ syslog_message_t parse_syslog(const char* raw_message, size_t size) {
     time_t rawtime;
     time(&rawtime);
 
-    message.timestamp = *localtime(&rawtime);
+    message->timestamp = *localtime(&rawtime);
   } else {
-    parse_iso_8601(timestamp, &message.timestamp);
+    parse_iso_8601(timestamp, &message->timestamp);
   }
 
   // --- HOSTNAME
   char* hostname = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!hostname) {
-    logln("Failed because no hostname");
-    return message;
+		return false;
   }
-  message.hostname = filter_nil(hostname);
+  message->hostname = filter_nil(hostname);
 
   // --- APP-NAME
   char* appname = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!appname) {
-    logln("Failed because no appname");
-    return message;
+		return false;
   }
-  message.appname = filter_nil(appname);
+  message->appname = filter_nil(appname);
 
   // --- PROCID
   // surprisingly, can be a string up to 128 chars
   char* process_id = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!process_id) {
-    logln("Failed because no process id");
-    return message;
+		return false;
   }
-  message.process_id = filter_nil(process_id);
+  message->process_id = filter_nil(process_id);
 
   // --- MSGID
   char* message_id = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!message_id) {
-    logln("Failed because no message id");
-    return message;
+		return false;
   }
-  message.message_id = filter_nil(message_id);
+  message->message_id = filter_nil(message_id);
 
   size_t num_structured_data;
   char ** structured_data = parse_context_get_structured_data_elements(&ctx, &num_structured_data);
   if (!structured_data) {
-    logln("Failed because no structured data");
-    return message;
+		return false;
   }
 
   if (num_structured_data < 1) {
-    logln("No structured data");
-    message.structured_data = NULL;
-    message.structured_data_count = 0;
+    message->structured_data = NULL;
+    message->structured_data_count = 0;
   } else {
-    message.structured_data_count = num_structured_data;
-    message.structured_data = get_structured_data(structured_data, num_structured_data);
+    message->structured_data_count = num_structured_data;
+    message->structured_data = get_structured_data(structured_data, num_structured_data);
   }
 
-	if (parse_context_is_eol(&ctx)) {
-		logln("We are at EOL in the parse context");
-	}
   // --- MSG
   // Rest of the data is the message
-  message.message = parse_context_is_eol(&ctx) ? NULL : parse_context_next_until(&ctx, '\0', true);
+  message->message = parse_context_is_eol(&ctx) ? NULL : parse_context_next_until(&ctx, '\0', true);
 
-  return message;
+	return true;
 }
 
 void free_syslog_message_t(syslog_message_t * message) {

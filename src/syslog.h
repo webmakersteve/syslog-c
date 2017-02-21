@@ -57,7 +57,7 @@ typedef struct syslog_message_t {
   size_t message_length;
 } syslog_message_t;
 
-syslog_message_t parse_syslog(const char*, size_t);
+bool parse_syslog(const char*, syslog_message_t*);
 void free_syslog_message_t(syslog_message_t * syslog_message);
 
 #endif
