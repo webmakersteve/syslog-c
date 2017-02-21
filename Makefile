@@ -1,28 +1,32 @@
-PROGRAM_NAME= syslog
+PROGRAM_NAME= libsyslog.so
 
 CC= gcc
-CFLAGS= -Wall
+CFLAGS= -Wall -g
 SRC= $(wildcard src/*.c)
 OBJS= $(subst .c,.o,$(SRC))
 LDFLAGS= -shared
+LIBTOOL= libtool
 
 TESTSRC= $(wildcard tests/*.c)
-
-.PHONY: tests
 
 all: $(SRC) $(PROGRAM_NAME)
 
 $(PROGRAM_NAME): $(OBJS)
-	$(CC) -g $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) -o $@ $(OBJS)
 
 print-%  : ; @echo $* = $($*)
 
 %.o : %.c
-	$(CC) -g $(CFLAGS) -c $< -o $@
+	$(CC) -fPIC $(CFLAGS) -c $< -o $@
 
 clean:
-	rm src/*.o tests/*.o
+	rm -rf src/*.o tests/*.o syslog.a
 
 test: $(TESTSRC)
 	$(CC) -I src/ $(CFLAGS) $(SRC) $(TESTSRC) -o runtests
 	./runtests
+
+install: $(PROGRAM_NAME)
+	$(LIBTOOL) --mode=install cp $(PROGRAM_NAME) /usr/local/lib/$(PROGRAM_NAME)
+	mkdir -p /usr/local/include/blizzard
+	cp src/syslog.h /usr/local/include/blizzard/syslog.h
