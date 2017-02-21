@@ -31,7 +31,4 @@
 *.out
 *.app
 
-processorlogs
-config.h
-
-proto/generated/*.pb.*
+runtests

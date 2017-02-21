@@ -6,6 +6,10 @@ SRC= $(wildcard src/*.c)
 OBJS= $(subst .c,.o,$(SRC))
 LDFLAGS= -shared
 
+TESTSRC= $(wildcard tests/*.c)
+
+.PHONY: tests
+
 all: $(SRC) $(PROGRAM_NAME)
 
 $(PROGRAM_NAME): $(OBJS)
@@ -17,4 +21,7 @@ print-%  : ; @echo $* = $($*)
 	$(CC) -g $(CFLAGS) -c $< -o $@
 
 clean:
-	rm src/*.o
+	rm src/*.o tests/*.o
+
+tests: $(TESTSRC)
+	$(CC) -I src/ $(CFLAGS) $(SRC) $(TESTSRC) -o runtests
