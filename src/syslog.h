@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 #include <limits.h>
 #include <string.h>
@@ -17,8 +17,6 @@
 #define ESCAPE '\\'
 #define PRI_VALUES_COUNT 24
 #define EQUALS '='
-
-static int PRI_VALUES[PRI_VALUES_COUNT] = {0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184};
 
 typedef struct syslog_extended_property_value_t {
   char* key;

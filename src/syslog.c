@@ -1,5 +1,7 @@
 #include "syslog.h"
 
+static int PRI_VALUES[PRI_VALUES_COUNT] = {0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184};
+
 typedef struct syslog_parse_context_t {
   const char * message;
   int pointer;
@@ -271,7 +273,7 @@ int get_facility_id(int pri_value) {
   return 0;
 }
 
-int parse_iso_8601(const char* datestring, struct tm* time) {
+int parse_iso_8601(const char* datestring, struct tm* tptr) {
   int y,M,d,h,m;
   float s;
   int tzh = 0, tzm = 0;
@@ -281,12 +283,12 @@ int parse_iso_8601(const char* datestring, struct tm* time) {
     }
   }
 
-  time->tm_year = y - 1900; // Year since 1900
-  time->tm_mon = M - 1;     // 0-11
-  time->tm_mday = d;        // 1-31
-  time->tm_hour = h;        // 0-23
-  time->tm_min = m;         // 0-59
-  time->tm_sec = (int)s;    // 0-61
+  tptr->tm_year = y - 1900; // Year since 1900
+  tptr->tm_mon = M - 1;     // 0-11
+  tptr->tm_mday = d;        // 1-31
+  tptr->tm_hour = h;        // 0-23
+  tptr->tm_min = m;         // 0-59
+  tptr->tm_sec = (int)s;    // 0-61
 
   return 1;
 }
@@ -349,7 +351,6 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
 		return false;
   }
 
-	#if 0
 	if (strlen(timestamp) == 1 && timestamp[0] == 0) {
     // This means we want to get the current time
     time_t rawtime;
@@ -359,7 +360,6 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   } else {
     parse_iso_8601(timestamp, &message->timestamp);
   }
-	#endif
 
 	// We do not need the timestamp anymore either
 	free((char*) timestamp);

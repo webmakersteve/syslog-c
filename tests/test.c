@@ -2,8 +2,8 @@
 #include "time.h"
 
 int main(int argc, char** argv) {
-	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID [exampleSDID@32473 eventSource=\"Application\" eventID=\"1011\"] Logging message...";
-	// char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
+	// char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID [exampleSDID@32473 eventSource=\"Application\" eventID=\"1011\"] Logging message...";
+	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
 
 	syslog_message_t msg = {};
 	if (!parse_syslog(mm, &msg)) {
@@ -37,6 +37,11 @@ int main(int argc, char** argv) {
 	printf("Appname: %s\n", msg.appname);
 	printf("PID: %s\n", msg.process_id);
 	printf("Message: %s\n", msg.message);
+
+	char timestring[100];
+	strftime(timestring, 100, "%x - %I:%M%p", &msg.timestamp);
+
+	printf("Time: %s\n", timestring);
 
 	printf("Num of structured data elements: %lu\n", msg.structured_data_count);
 
