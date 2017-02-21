@@ -140,7 +140,7 @@ char** parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, 
   }
 
 	char pk = 0;
-  while (parse_context_peek(ctx, &pk)) {
+  while (parse_context_peek(ctx, &pk) && pk == OPEN_BRACKET) {
     if (*num_elements >= array_size) {
       // Need to realloc the array
       array_size += array_increment_size;
@@ -154,7 +154,9 @@ char** parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, 
       strcpy(datas[*num_elements], sd);
       logln(datas[*num_elements]);
       *num_elements = *num_elements + 1;
-    }
+    } else {
+			logln("Did not get any structured data from that piece");
+		}
   }
 
   // If we are at EOL
@@ -421,8 +423,10 @@ syslog_message_t parse_syslog(const char* raw_message, size_t size) {
     message.structured_data_count = num_structured_data;
     message.structured_data = get_structured_data(structured_data, num_structured_data);
   }
-  // message.structured_data = structured_data;
 
+	if (parse_context_is_eol(&ctx)) {
+		logln("We are at EOL in the parse context");
+	}
   // --- MSG
   // Rest of the data is the message
   message.message = parse_context_is_eol(&ctx) ? NULL : parse_context_next_until(&ctx, '\0', true);
