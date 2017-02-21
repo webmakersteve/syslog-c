@@ -26,4 +26,3 @@ clean:
 test: $(TESTSRC)
 	$(CC) -I src/ $(CFLAGS) $(SRC) $(TESTSRC) -o runtests
 	./runtests
-	rm runtests

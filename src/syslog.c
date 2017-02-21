@@ -123,7 +123,7 @@ char** parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, 
   size_t array_size = 12;
   size_t array_increment_size = 12;
 
-  char ** datas = (char**) malloc(sizeof(char*) * (array_size + 1));
+  char ** datas = (char**) malloc(sizeof(char*) * (array_size));
   *num_elements = 0;
 
   if (start == 0) {
@@ -140,14 +140,12 @@ char** parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, 
     if (*num_elements >= array_size) {
       // Need to realloc the array
       array_size += array_increment_size;
-      datas = (char**) realloc(datas, sizeof(char*) * (array_size + 1));
+      datas = (char**) realloc(datas, sizeof(char*) * (array_size));
     }
     parse_context_one(ctx, &pk); // eat [
     // We need to find where structured data ends, but takes escapes into account
-    char * sd = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, false, false);
-    if (sd) {
-      datas[*num_elements] = (char*) malloc(strlen(sd) + 1);
-      strcpy(datas[*num_elements], sd);
+    datas[*num_elements] = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, false, false);
+    if (datas[*num_elements]) {
       *num_elements = *num_elements + 1;
     }
   }
@@ -183,12 +181,10 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   syslog_parse_context_t ctx = create_parse_context(data_string);
 
   // SD-ID
-  char* sd_id = parse_context_next_until_with_escapes(&ctx, SEPARATOR, true, true);
-  if (!sd_id) {
+  property->id = parse_context_next_until_with_escapes(&ctx, SEPARATOR, true, true);
+  if (!property->id) {
     return 0;
   }
-
-  property->id = sd_id;
 
   if (parse_context_is_eol(&ctx)) {
     // This means the entire thing is the sd_id, as in
@@ -198,13 +194,14 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     return 1;
   }
 
+	// @todo Max 12 elements here. We need to make this bigger
   property->pairs = (syslog_extended_property_value_t*) malloc(sizeof(syslog_extended_property_value_t) * 12 + 1);
 
-  size_t num_elements = -1;
+  size_t num_elements = 0;
 
   while (!parse_context_is_eol(&ctx)) {
     char* key = parse_context_next_until(&ctx, EQUALS, false);
-    if (!key || strlen(key) == 0) {
+    if (!key) {
       // Invalid because we need a key and value
       break;
     }
@@ -213,18 +210,20 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     char quote = 0;
     if (!parse_context_one(&ctx, &quote) || quote != QUOTE) {
       // needs to be a quote
+			free(key);
       break;
     }
 
     char* value = parse_context_next_until_with_escapes(&ctx, QUOTE, true, false);
     if (!value) {
       // No ending quote? What's wrong with you! courtsey of @dareed
+      free(key);
       break;
     }
 
     num_elements++;
 
-    property->pairs[num_elements] = (syslog_extended_property_value_t) {key, value};
+    property->pairs[num_elements - 1] = (syslog_extended_property_value_t) {key, value};
 
     if (!parse_context_is_eol(&ctx)) {
       char next = 0;
@@ -272,7 +271,7 @@ int get_facility_id(int pri_value) {
   return 0;
 }
 
-int parse_iso_8601(char* datestring, struct tm* time) {
+int parse_iso_8601(const char* datestring, struct tm* time) {
   int y,M,d,h,m;
   float s;
   int tzh = 0, tzm = 0;
@@ -287,7 +286,7 @@ int parse_iso_8601(char* datestring, struct tm* time) {
   time->tm_mday = d;        // 1-31
   time->tm_hour = h;        // 0-23
   time->tm_min = m;         // 0-59
-  time->tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+  time->tm_sec = (int)s;    // 0-61
 
   return 1;
 }
@@ -331,19 +330,27 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   message->facility = facility_id / 8;
   message->severity = pri_value - facility_id;
 
+	// We need to free this pri_string because it has been allocated
+	// and isn't actually used
+	free(pri_string);
+
   // --- VERSION
   message->syslog_version = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!message->syslog_version || strlen(message->syslog_version) > 2) {
+		// We do not need to deallocate the memory because none of the previous
+		// stuff has been malloc'd if this returned null
 		return false;
   }
 
   // --- TIMESTAMP
   char* timestamp = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!timestamp) {
+		free_syslog_message_t(message);
 		return false;
   }
 
-  if (strlen(timestamp) == 1 && timestamp[0] == 0) {
+	#if 0
+	if (strlen(timestamp) == 1 && timestamp[0] == 0) {
     // This means we want to get the current time
     time_t rawtime;
     time(&rawtime);
@@ -352,10 +359,15 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   } else {
     parse_iso_8601(timestamp, &message->timestamp);
   }
+	#endif
 
-  // --- HOSTNAME
+	// We do not need the timestamp anymore either
+	free((char*) timestamp);
+
+	// --- HOSTNAME
   char* hostname = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!hostname) {
+		free_syslog_message_t(message);
 		return false;
   }
   message->hostname = filter_nil(hostname);
@@ -363,6 +375,7 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   // --- APP-NAME
   char* appname = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!appname) {
+		free_syslog_message_t(message);
 		return false;
   }
   message->appname = filter_nil(appname);
@@ -371,6 +384,7 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   // surprisingly, can be a string up to 128 chars
   char* process_id = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!process_id) {
+		free_syslog_message_t(message);
 		return false;
   }
   message->process_id = filter_nil(process_id);
@@ -378,6 +392,7 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   // --- MSGID
   char* message_id = parse_context_next_until(&ctx, SEPARATOR, false);
   if (!message_id) {
+		free_syslog_message_t(message);
 		return false;
   }
   message->message_id = filter_nil(message_id);
@@ -385,6 +400,7 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
   size_t num_structured_data;
   char ** structured_data = parse_context_get_structured_data_elements(&ctx, &num_structured_data);
   if (!structured_data) {
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -396,6 +412,14 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
     message->structured_data = get_structured_data(structured_data, num_structured_data);
   }
 
+	// Need to free that char**
+	for (size_t si = 0; si < num_structured_data; si++) {
+		free(structured_data[si]);
+	}
+
+	// And the wrapper
+	free(structured_data);
+
   // --- MSG
   // Rest of the data is the message
   message->message = parse_context_is_eol(&ctx) ? NULL : parse_context_next_until(&ctx, '\0', true);
@@ -403,11 +427,59 @@ bool parse_syslog(const char* raw_message, syslog_message_t * message) {
 	return true;
 }
 
-void free_syslog_message_t(syslog_message_t * message) {
+void free_syslog_extended_property_value_t(syslog_extended_property_value_t * property_value) {
+	free((char*) property_value->key);
+	free((char*) property_value->value);
+}
+
+void free_syslog_extended_property_t(syslog_extended_property_t * extended_property) {
+	// Iterate over that now
+	if (extended_property->num_pairs > 0) {
+		// Okay... we have some pairs
+		for (size_t i = 0; i < extended_property->num_pairs; i++) {
+			free_syslog_extended_property_value_t(&extended_property->pairs[i]);
+		}
+
+		free(extended_property->pairs);
+	}
+
+	free((char*) extended_property->id);
+}
+
+void free_syslog_message_t(syslog_message_t * msg) {
 	// Essentially we need to iterate over the fields that have been malloc'd and free them
 	// Just a helper utility since the structure is slightly complicated
 
-	message = NULL;
+	if (msg->message) {
+		free((char*) msg->message);
+	}
+
+	if (msg->syslog_version) {
+		free((char*) msg->syslog_version);
+	}
+
+	if (msg->message_id) {
+		free((char*) msg->message_id);
+	}
+
+	if (msg->hostname) {
+		free((char*) msg->hostname);
+	}
+
+	if (msg->appname) {
+		free((char*) msg->appname);
+	}
+
+	if (msg->process_id) {
+		free((char*) msg->process_id);
+	}
+
+	if (msg->structured_data) {
+		for (size_t i = 0; i < msg->structured_data_count; i++) {
+			free_syslog_extended_property_t(&msg->structured_data[i]);
+		}
+		free(msg->structured_data);
+	}
+
+	msg = NULL;
 }
-
-

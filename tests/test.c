@@ -2,6 +2,7 @@
 
 int main(int argc, char** argv) {
 	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID [exampleSDID@32473 eventSource=\"Application\" eventID=\"1011\"] Logging message...";
+
 	syslog_message_t msg = {};
 	if (!parse_syslog(mm, &msg)) {
 		return 1;
@@ -17,4 +18,24 @@ int main(int argc, char** argv) {
 	printf("Message: %s\n", msg.message);
 
 	printf("Num of structured data elements: %lu\n", msg.structured_data_count);
+
+	for (size_t i = 0; i < msg.structured_data_count; i++) {
+		syslog_extended_property_t * property =
+			(syslog_extended_property_t *) &msg.structured_data[i];
+
+		printf("Property %lu. Key: %s\n", i, property->id);
+
+		// Iterate over that now
+		if (property->num_pairs > 0) {
+			// Okay... we have some pairs
+			for (size_t ii = 0; ii < property->num_pairs; ii++) {
+				syslog_extended_property_value_t * pair =
+					(syslog_extended_property_value_t *) &property->pairs[ii];
+
+				printf("%s => %s\n", pair->key, pair->value);
+			}
+		}
+	}
+
+	free_syslog_message_t(&msg);
 }
