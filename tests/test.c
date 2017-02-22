@@ -12,7 +12,7 @@ void clar_start_clock() {
 		free_syslog_message_t(&m);
 	}
 
-	/* Do work */
+	*/
 
 	float end_time = (float)clock()/CLOCKS_PER_SEC;
 

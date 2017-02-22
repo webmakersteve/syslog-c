@@ -6,7 +6,7 @@ void test_syslog_message_with_structured_data__can_be_parsed(void) {
 	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID [exampleSDID@32473 eventSource=\"Application\" eventID=\"1011\"] Logging message...";
 
 	if (!parse_syslog_message_t(mm, &msg)) {
-		return;
+		cl_fail("Could not parse the syslog message");
 	}
 
 	cl_assert_equal_i(msg.severity, 5);
@@ -26,26 +26,26 @@ void test_syslog_message_with_structured_data__can_be_parsed(void) {
 
 	cl_assert_equal_s(timestring, "12/16/16 - 12:00PM");
 
-	cl_assert_equal(msg.structured_data == 2, "There was structured data parsed");
+	cl_assert_(msg.structured_data_count == 1, "Expected 1 structured data field");
 
-	for (size_t i = 0; i < msg.structured_data_count; i++) {
-		syslog_extended_property_t * property =
-			(syslog_extended_property_t *) &msg.structured_data[i];
+	syslog_extended_property_t * property =
+		(syslog_extended_property_t *) &msg.structured_data[0];
 
-		printf("Property %lu. Key: %s\n", i, property->id);
+	cl_assert_equal_s(property->id, "exampleSDID@32473");
 
-		// Iterate over that now
-		if (property->num_pairs > 0) {
-			// Okay... we have some pairs
-			for (size_t ii = 0; ii < property->num_pairs; ii++) {
-				syslog_extended_property_value_t * pair =
-					(syslog_extended_property_value_t *) &property->pairs[ii];
+	cl_assert_(property->num_pairs == 2, "Expected 2 pairs");
 
-				printf("%s => %s\n", pair->key, pair->value);
-			}
-		}
-	}
+	syslog_extended_property_value_t * pair =
+		(syslog_extended_property_value_t *) &property->pairs[0];
+
+	cl_assert_equal_s(pair->key, "eventSource");
+	cl_assert_equal_s(pair->value, "Application");
+
+	// Go to the next one
+	pair++;
+
+	cl_assert_equal_s(pair->key, "eventID");
+	cl_assert_equal_s(pair->value, "1011");
 
 	free_syslog_message_t(&msg);
-
 }

@@ -6,7 +6,7 @@ void test_syslog_message__can_be_parsed(void) {
 	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
 
 	if (!parse_syslog_message_t(mm, &msg)) {
-		return cl_fail("Could not parse the syslog message");
+		cl_fail("Could not parse the syslog message");
 	}
 
 	cl_assert_equal_i(msg.severity, 5);
@@ -26,7 +26,18 @@ void test_syslog_message__can_be_parsed(void) {
 
 	cl_assert_equal_s(timestring, "12/16/16 - 12:00PM");
 
-	cl_assert_equal(msg.structured_data == 0, "There was structured data parsed");
+	cl_assert_(msg.structured_data == 0, "There should be no structured data");
 
 	free_syslog_message_t(&msg);
+}
+
+void test_syslog_message__can_fail(void) {
+	syslog_message_t msg = {};
+
+	char * mm = "s<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
+
+	if (parse_syslog_message_t(mm, &msg)) {
+		cl_fail("Should not be able to parse this syslog message");
+	}
+
 }
