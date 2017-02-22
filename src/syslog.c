@@ -301,7 +301,7 @@ char* filter_nil(char* s) {
   return s;
 }
 
-bool parse_syslog(const char* raw_message, syslog_message_t * message) {
+bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message) {
   syslog_parse_context_t ctx = create_parse_context(raw_message);
 
   // --- PRI

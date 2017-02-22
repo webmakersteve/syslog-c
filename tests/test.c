@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
 	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
 
 	syslog_message_t msg = {};
-	if (!parse_syslog(mm, &msg)) {
+	if (!parse_syslog_message_t(mm, &msg)) {
 		return 1;
 	}
 
@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
 	for (int i = 0; i < num_messages; i++) {
 		syslog_message_t m = {};
-		if (!parse_syslog(mm, &m)) {
+		if (!parse_syslog_message_t(mm, &m)) {
 			return 1;
 		}
 		free_syslog_message_t(&m);
