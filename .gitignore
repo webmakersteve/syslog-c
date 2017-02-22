@@ -34,4 +34,7 @@
 *.dSYM
 
 runtests
-syslog
+
+# Clar testing
+.clarcache
+clar.suite
