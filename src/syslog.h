@@ -9,15 +9,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define SEPARATOR ' '
-#define NIL '-'
-#define QUOTE '"'
-#define CLOSE_BRACKET ']'
-#define OPEN_BRACKET '['
-#define ESCAPE '\\'
-#define PRI_VALUES_COUNT 24
-#define EQUALS '='
-
 #ifdef __cplusplus
 extern "C"{
 #endif
