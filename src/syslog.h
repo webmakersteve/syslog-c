@@ -22,6 +22,7 @@ typedef struct syslog_extended_property_t {
   char* id;
   syslog_extended_property_value_t * pairs;
   size_t num_pairs;
+	char* raw_interned_message;
 } syslog_extended_property_t;
 
 typedef struct syslog_message_t {
@@ -48,6 +49,8 @@ typedef struct syslog_message_t {
   size_t structured_data_count;
 
   size_t message_length;
+
+	char* raw_interned_message;
 } syslog_message_t;
 
 bool parse_syslog_message_t(const char*, syslog_message_t*);

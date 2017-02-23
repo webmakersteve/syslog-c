@@ -75,8 +75,6 @@ size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char 
   size_t i = 0;
 
   while (!parse_context_is_eol(ctx)) {
-    i++;
-
     parse_context_one(ctx, &c);
 
     if (escaped) {
@@ -104,6 +102,8 @@ size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char 
     }
     // Otherwise add the character
     writestr[i] = c;
+
+		i++;
   }
 
   if (or_eol) {
@@ -134,7 +134,9 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
   while (parse_context_peek(ctx, &pk) && pk == OPEN_BRACKET) {
     parse_context_one(ctx, &pk); // eat [
     // We need to find where structured data ends, but takes escapes into account
-		int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, &writestr[intern_pointer], false, false);
+		char* ptr_segment = writestr + intern_pointer;
+		int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, ptr_segment, false, false);
+
     if (str_len) {
       *num_elements = *num_elements + 1;
 			// Increment this intern pointer by the length of the string returned + 1 for the
@@ -183,6 +185,8 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   }
 
 	property->id = &element_string[intern_pointer];
+
+	property->raw_interned_message = element_string;
 
 	// Add one for the null terminator
 	intern_pointer += id_length + 1;
@@ -313,13 +317,12 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
   char* intern = malloc((sizeof(char) * strlen(raw_message) * 2) + 8);
 
+	message->raw_interned_message = intern;
+
   // --- PRI
   char buf = 0;
-  if (!parse_context_one(&ctx, &buf)) {
-    return false;
-  }
-
-  if (buf != '<') {
+  if (!parse_context_one(&ctx, &buf) || buf != '<') {
+		free_syslog_message_t(message);
     return false;
   }
 
@@ -328,6 +331,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   int pri_val_length = parse_context_next_until(&ctx, '>', &intern[0], false);
   // We do not need the position here. Just check if it worked
   if (!pri_val_length) {
+		free_syslog_message_t(message);
     return false;
   }
 
@@ -338,6 +342,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   int pri_value = atoi(&intern[0]);
 
   if (pri_value < 0 || pri_value > 191) {
+		free_syslog_message_t(message);
     return false;
   }
 
@@ -352,8 +357,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // --- VERSION
   int syslog_version_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!syslog_version_length || syslog_version_length > 2) {
-		// We do not need to deallocate the memory because none of the previous
-		// stuff has been malloc'd if this returned null
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -364,6 +368,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // --- TIMESTAMP
   int timestamp_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!timestamp_length) {
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -386,6 +391,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 	// --- HOSTNAME
   int hostname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!hostname_length) {
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -396,6 +402,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // --- APP-NAME
   int appname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!appname_length) {
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -417,6 +424,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // --- MSGID
   int message_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!message_id_length) {
+		free_syslog_message_t(message);
 		return false;
   }
 
@@ -436,23 +444,29 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   }
 
 	// No matter what we need to increment the intern pointer here. Because we used the string.
-	intern_pointer += buf_size;
+	intern_pointer += buf_size + 1;
 
   // --- MSG
   // Rest of the data is the message
   if (parse_context_is_eol(&ctx)) {
     message->message = NULL;
   } else {
-    parse_context_next_until(&ctx, '\0', &intern[intern_pointer], true);
+    int message_size = parse_context_next_until(&ctx, '\0', &intern[intern_pointer], true);
     message->message = &intern[intern_pointer];
+
+		intern_pointer += message_size + 1;
   }
+
+	// This is the real length of the string so we can realloc it
+	//
+	intern = realloc(intern, intern_pointer);
 
 	return true;
 }
 
 void free_syslog_extended_property_value_t(syslog_extended_property_value_t * property_value) {
-	free((char*) property_value->key);
-	free((char*) property_value->value);
+	property_value->key = NULL;
+	property_value->value = NULL;
 }
 
 void free_syslog_extended_property_t(syslog_extended_property_t * extended_property) {
@@ -465,44 +479,33 @@ void free_syslog_extended_property_t(syslog_extended_property_t * extended_prope
 
 		free(extended_property->pairs);
 	}
+	extended_property->pairs = NULL;
 
-	free((char*) extended_property->id);
+	// Null the chair pointer
+	extended_property->id = NULL;
 }
 
 void free_syslog_message_t(syslog_message_t * msg) {
 	// Essentially we need to iterate over the fields that have been malloc'd and free them
 	// Just a helper utility since the structure is slightly complicated
 
-	if (msg->message) {
-		free((char*) msg->message);
-	}
-
-	if (msg->syslog_version) {
-		free((char*) msg->syslog_version);
-	}
-
-	if (msg->message_id) {
-		free((char*) msg->message_id);
-	}
-
-	if (msg->hostname) {
-		free((char*) msg->hostname);
-	}
-
-	if (msg->appname) {
-		free((char*) msg->appname);
-	}
-
-	if (msg->process_id) {
-		free((char*) msg->process_id);
-	}
+	// Null all the char pointers
+	msg->message = NULL;
+	msg->syslog_version = NULL;
+	msg->message_id = NULL;
+	msg->hostname = NULL;
+	msg->appname = NULL;
+	msg->process_id = NULL;
 
 	if (msg->structured_data) {
 		for (size_t i = 0; i < msg->structured_data_count; i++) {
 			free_syslog_extended_property_t(&msg->structured_data[i]);
 		}
-		free(msg->structured_data);
+		// free(msg->structured_data);
 	}
+
+	// Free the raw interned message
+	free(msg->raw_interned_message);
 
 	msg = NULL;
 }
