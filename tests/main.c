@@ -9,10 +9,7 @@ int main(int argc, char *argv[])
 	int res;
 
 	clar_test_init(argc, argv);
-
-	/* Run the test suite */
 	res = clar_test_run();
-
 	clar_test_shutdown();
 
 	return res;

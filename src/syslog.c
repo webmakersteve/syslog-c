@@ -9,6 +9,9 @@
 #define PRI_VALUES_COUNT 24
 #define EQUALS '='
 
+// Run this to make it so we do an extra realloc call to use minimum amount of memory
+// #define OPTIMIZE_FOR_MEMORY
+
 static int PRI_VALUES[PRI_VALUES_COUNT] = {0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184};
 
 typedef struct syslog_parse_context_t {
@@ -186,6 +189,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
 	property->id = &element_string[intern_pointer];
 
+	// Needs to be saved here so it can be free'd
 	property->raw_interned_message = element_string;
 
 	// Add one for the null terminator
@@ -199,8 +203,11 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     return 1;
   }
 
+	int pair_increment = 4;
+	int allocated_pairs = pair_increment;
+
 	// @todo Max 12 elements here. We need to make this bigger
-  property->pairs = (syslog_extended_property_value_t*) malloc(sizeof(syslog_extended_property_value_t) * 12 + 1);
+  property->pairs = (syslog_extended_property_value_t*) malloc(sizeof(syslog_extended_property_value_t) * allocated_pairs);
 
   size_t num_elements = 0;
   // FIX IT FIX IT FIX IT SHOULD BE DOING INTERNING HERE @TODO
@@ -234,6 +241,12 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
 		intern_pointer += val_len + 1;
 
+		if (allocated_pairs < num_elements) {
+			allocated_pairs += pair_increment;
+
+			property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
+		}
+
     property->pairs[num_elements - 1] = (syslog_extended_property_value_t) {key, value};
 
     if (!parse_context_is_eol(&ctx)) {
@@ -246,6 +259,15 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
   property->num_pairs = num_elements;
 
+	// We know how many we have now so we can realloc the entire thing if we need to
+#ifdef OPTIMIZE_FOR_MEMORY
+	if (num_elements < allocated_pairs) {
+		allocated_pairs = num_elements + 1;
+
+		property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
+	}
+#endif
+
   return 1;
 }
 
@@ -253,7 +275,7 @@ syslog_extended_property_t * get_structured_data(char* structured_data_elements,
   // the message may contain multiple structured data parts, as in:
   // [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"]
   // in which case we are given each separately within the list array.
-  syslog_extended_property_t * properties = (syslog_extended_property_t*) malloc(sizeof(syslog_extended_property_t) * 24 + 1);
+  syslog_extended_property_t * properties = (syslog_extended_property_t*) malloc(sizeof(syslog_extended_property_t) * num_elements + 1);
 
   int ep_num = 0;
 	int last_string_size = 0;
@@ -457,9 +479,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 		intern_pointer += message_size + 1;
   }
 
+#ifdef OPTIMIZE_FOR_MEMORY
 	// This is the real length of the string so we can realloc it
-	//
 	intern = realloc(intern, intern_pointer);
+#endif
 
 	return true;
 }
@@ -483,6 +506,8 @@ void free_syslog_extended_property_t(syslog_extended_property_t * extended_prope
 
 	// Null the chair pointer
 	extended_property->id = NULL;
+
+	free(extended_property->raw_interned_message);
 }
 
 void free_syslog_message_t(syslog_message_t * msg) {
@@ -501,7 +526,7 @@ void free_syslog_message_t(syslog_message_t * msg) {
 		for (size_t i = 0; i < msg->structured_data_count; i++) {
 			free_syslog_extended_property_t(&msg->structured_data[i]);
 		}
-		// free(msg->structured_data);
+		free(msg->structured_data);
 	}
 
 	// Free the raw interned message
