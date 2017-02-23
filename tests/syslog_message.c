@@ -3,7 +3,7 @@
 void test_syslog_message__can_be_parsed(void) {
 	syslog_message_t msg = {};
 
-	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID Logging message...";
+	char * mm = "<165>1 2016-12-16T12:00:00.000Z hostname appname PROCID MSGID [exampleSDID@32473 eventSource=\"Application\" eventID=\"1011\"] Logging message...";
 
 	if (!parse_syslog_message_t(mm, &msg)) {
 		cl_fail("Could not parse the syslog message");
