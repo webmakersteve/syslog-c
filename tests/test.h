@@ -8,6 +8,4 @@
 #include "syslog.h"
 #include "time.h"
 
-void clar_start_clock();
-
 #endif

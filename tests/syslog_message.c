@@ -86,3 +86,97 @@ void test_syslog_message__can_be_parsed_with_a_different_message(void) {
 
 	free_syslog_message_t(&msg);
 }
+
+void test_syslog_message__honors_null_fields(void) {
+	syslog_message_t msg = {};
+
+	char * mm = "<165>1 2016-12-16T12:00:00.000Z - - - - - Logging message...";
+
+	if (!parse_syslog_message_t(mm, &msg)) {
+		cl_fail("Could not parse the syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 5);
+	cl_assert_equal_i(msg.facility, 20);
+	cl_assert_equal_i(msg.pri_value, 165);
+	cl_assert_equal_s(msg.syslog_version, "1");
+
+	cl_assert_equal_s(msg.hostname, "");
+	cl_assert_equal_s(msg.appname, "");
+	cl_assert_equal_s(msg.process_id, "");
+	cl_assert_equal_s(msg.message_id, "");
+
+	cl_assert_equal_s(msg.message, "Logging message...");
+
+	cl_assert_(msg.structured_data == 0, "There should be no structured data");
+
+	free_syslog_message_t(&msg);
+}
+
+void test_syslog_message__parses_pri_values_correctly() {
+	syslog_message_t msg = {};
+
+	if (!parse_syslog_message_t("<160>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 0);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<161>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 1);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<162>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 2);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<163>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 3);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<164>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 4);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<165>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 5);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<166>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 6);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<167>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 7);
+	cl_assert_equal_i(msg.facility, 20);
+
+	if (!parse_syslog_message_t("<168>1 2016-12-16T12:00:00.000Z - - - - - Logging message...", &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 0);
+	cl_assert_equal_i(msg.facility, 21);
+
+}
