@@ -52,15 +52,16 @@ size_t parse_context_next_until(syslog_parse_context_t * ctx, char until_char, c
   size_t newstr_len = 0;
   int old_pointer = ctx->pointer;
 
-  if (include_eol) {
+  if (ptr) {
+    size_t index = ptr - ctx->message;
+    newstr_len = index - ctx->pointer;
+    ctx->pointer = index + 1;
+  } else if (include_eol) {
     // Create a new string
     newstr_len = str_len - ctx->pointer;
     ctx->pointer = str_len + 1;
   } else {
-    size_t index = ptr - ctx->message;
-    newstr_len = index - ctx->pointer;
-
-    ctx->pointer = index + 1;
+    return 0;
   }
 
   if (writestr) {
@@ -124,7 +125,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
 	*num_elements = 0;
 	int intern_pointer = 0;
 
-  if (start == 0) {
+  if (start == NIL) {
     // Structured data is nothing. We just want to advance to the separator
     parse_context_next_until(ctx, SEPARATOR, NULL, true);
     return 0;
@@ -327,8 +328,9 @@ int parse_iso_8601(const char* datestring, struct tm* tptr) {
 }
 
 char* filter_nil(char* s) {
-  if (strlen(s) == 1 && s[0] == 0) {
-    return "";
+  if (strlen(s) == 1 && s[0] == NIL) {
+    // Null the string so it is empty
+    s[0] = 0;
   }
 
   return s;
