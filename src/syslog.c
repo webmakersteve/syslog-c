@@ -335,11 +335,19 @@ char* filter_nil(char* s) {
 }
 
 bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message) {
+  if (!raw_message) {
+    return false;
+  }
+
   syslog_parse_context_t ctx = create_parse_context(raw_message);
 
-  char* intern = malloc((sizeof(char) * strlen(raw_message) * 2) + 8);
+  size_t allocation_size = (strlen(raw_message) * 2) + 2;
 
-	message->raw_interned_message = intern;
+  // Use calloc so we cget a zero'd buffer
+  message->raw_interned_message = calloc(allocation_size, sizeof(char));
+
+  // Just keep this for ease of access
+	char* intern = message->raw_interned_message;
 
   // --- PRI
   char buf = 0;
@@ -350,7 +358,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
   int intern_pointer = 0;
 
-  int pri_val_length = parse_context_next_until(&ctx, '>', &intern[0], false);
+  int pri_val_length = parse_context_next_until(&ctx, '>', &intern[intern_pointer], false);
   // We do not need the position here. Just check if it worked
   if (!pri_val_length) {
 		free_syslog_message_t(message);
@@ -436,6 +444,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // surprisingly, can be a string up to 128 chars
   int process_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
   if (!process_id_length) {
+    free_syslog_message_t(message);
 		return false;
   }
 
@@ -478,6 +487,8 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
 		intern_pointer += message_size + 1;
   }
+
+  intern[intern_pointer] = 0;
 
 #ifdef OPTIMIZE_FOR_MEMORY
 	// This is the real length of the string so we can realloc it
@@ -522,15 +533,20 @@ void free_syslog_message_t(syslog_message_t * msg) {
 	msg->appname = NULL;
 	msg->process_id = NULL;
 
-	if (msg->structured_data) {
+  if (msg->structured_data) {
 		for (size_t i = 0; i < msg->structured_data_count; i++) {
 			free_syslog_extended_property_t(&msg->structured_data[i]);
 		}
-		free(msg->structured_data);
 	}
+
+  free(msg->structured_data);
+
+  msg->structured_data = NULL;
 
 	// Free the raw interned message
 	free(msg->raw_interned_message);
+
+  msg->raw_interned_message = NULL;
 
 	msg = NULL;
 }
