@@ -179,7 +179,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   syslog_parse_context_t ctx = create_parse_context(data_string);
 
 	// New write string time
-	char* element_string = malloc(sizeof(char) * strlen(data_string) * 2);
+	char* element_string = calloc(strlen(data_string) * 2, sizeof(char));
 	int intern_pointer = 0;
 
   // SD-ID
@@ -286,7 +286,7 @@ syslog_extended_property_t * get_structured_data(char* structured_data_elements,
     if (parse_structured_data_element(st_element, &properties[ep_num])) {
       ep_num++;
     }
-		last_string_size = strlen(st_element);
+		last_string_size = strlen(st_element) + 1;
   }
 
   return properties;
