@@ -3,6 +3,7 @@ PROGRAM_NAME= libsyslog.so
 CC= gcc
 CFLAGS= -Wall -g
 TEST_CFLAGS= -g -Wno-unused-function
+BENCH_FLAGS= -O2
 SRC= $(wildcard src/*.c)
 OBJS= $(subst .c,.o,$(SRC))
 HEADERS= $(wildcard src/*.h)
@@ -29,6 +30,9 @@ clean:
 test: clar.suite $(PROGRAM_NAME) $(TESTSRC)
 	$(CC) -Itests/ -Isrc/ $(TEST_CFLAGS) $(SRC) $(CLARSRC) $(TESTSRC) -o runtests
 	./runtests
+
+benchmark: $(PROGRAM_NAME) bench/benchmark.c
+	$(CC) -Isrc/ $(BENCH_FLAGS) $(SRC) bench/benchmark.c -o benchmark
 
 install: $(PROGRAM_NAME)
 	$(LIBTOOL) --mode=install cp $(PROGRAM_NAME) /usr/local/lib/$(PROGRAM_NAME)

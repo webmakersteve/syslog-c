@@ -547,6 +547,4 @@ void free_syslog_message_t(syslog_message_t * msg) {
 	free(msg->raw_interned_message);
 
   msg->raw_interned_message = NULL;
-
-	msg = NULL;
 }

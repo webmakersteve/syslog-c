@@ -33,7 +33,9 @@
 
 *.dSYM
 
+# Executables generated
 runtests
+benchmark
 
 # Clar testing
 .clarcache
