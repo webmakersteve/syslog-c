@@ -113,6 +113,50 @@ void test_syslog_message__honors_null_fields(void) {
 	free_syslog_message_t(&msg);
 }
 
+void test_syslog_message__honors_null_timestamp(void) {
+	syslog_message_t msg = {};
+
+	char * mm = "<165>1 - hostname appname PROCID MSGID Logging message...";
+
+	if (!parse_syslog_message_t(mm, &msg)) {
+		cl_fail("Could not parse first syslog message");
+	}
+
+	cl_assert_equal_i(msg.severity, 5);
+	cl_assert_equal_i(msg.facility, 20);
+	cl_assert_equal_i(msg.pri_value, 165);
+	cl_assert_equal_s(msg.syslog_version, "1");
+
+	cl_assert_equal_s(msg.message_id, "MSGID");
+	cl_assert_equal_s(msg.hostname, "hostname");
+	cl_assert_equal_s(msg.appname, "appname");
+	cl_assert_equal_s(msg.process_id, "PROCID");
+
+	cl_assert_equal_s(msg.message, "Logging message...");
+
+	char timestring[100];
+	strftime(timestring, 100, "%x - %I:%M%p", &msg.timestamp);
+
+	char compare[100];
+
+	{
+		// This means we want to get the current time
+		time_t rawtime;
+		time(&rawtime);
+
+		struct tm now_tm = *localtime(&rawtime);
+
+		strftime(compare, 100, "%x - %I:%M%p", &now_tm);
+	}
+
+	cl_assert_equal_s(timestring, compare);
+
+	cl_assert_(msg.structured_data == 0, "There should be no structured data");
+
+	free_syslog_message_t(&msg);
+
+}
+
 void test_syslog_message__parses_pri_values_correctly() {
 	syslog_message_t msg = {};
 

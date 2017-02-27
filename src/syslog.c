@@ -406,7 +406,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
   char* timestamp = &intern[intern_pointer];
 
-	if (timestamp_length == 1 && timestamp[0] == 0) {
+	if (timestamp_length == 1 && timestamp[0] == NIL) {
     // This means we want to get the current time
     time_t rawtime;
     time(&rawtime);
