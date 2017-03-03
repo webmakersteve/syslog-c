@@ -17,10 +17,11 @@ static int PRI_VALUES[PRI_VALUES_COUNT] = {0, 8, 16, 24, 32, 40, 48, 56, 64, 72,
 typedef struct syslog_parse_context_t {
   const char * message;
   int pointer;
+  int is_eol;
 } syslog_parse_context_t;
 
 int parse_context_is_eol(syslog_parse_context_t * ctx) {
-  return ctx->pointer >= strlen(ctx->message);
+  return ctx->is_eol;
 }
 
 int parse_context_peek(syslog_parse_context_t * ctx, char* out) {
@@ -36,6 +37,7 @@ int parse_context_peek(syslog_parse_context_t * ctx, char* out) {
 int parse_context_one(syslog_parse_context_t * ctx, char* out) {
   if (parse_context_peek(ctx, out)) {
     ctx->pointer++;
+    ctx->is_eol = ctx->pointer >= strlen(ctx->message);
     return 1;
   }
 
@@ -171,7 +173,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
 
 syslog_parse_context_t create_parse_context(const char* raw_message) {
   // Pointer should automatically be initialized to 0
-  syslog_parse_context_t ctx = { raw_message };
+  syslog_parse_context_t ctx = { raw_message, 0, 0 >= strlen(raw_message) };
   return ctx;
 }
 

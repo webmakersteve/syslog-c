@@ -71,7 +71,7 @@ void benchmark_with_structured_data(int num_messages, bench_clock_t * bench_cloc
 int main(int argc, char* argv[]) {
 	bench_clock_t bench_clock = {};
 
-	int num_messages = 2540000;
+	int num_messages = 12540000;
 
 	benchmark(num_messages, &bench_clock);
 	{
