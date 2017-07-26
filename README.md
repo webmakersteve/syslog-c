@@ -21,26 +21,26 @@ if (!parse_syslog_message_t(mm, &msg)) {
   return 1;
 }
 
-# If it succeeded, msg will be filled in. 
+// If it succeeded, msg will be filled in.
 
-# msg.severity = 5
-# msg.facility = 20
-# msg.pri_value = 165
-# msg.syslog_version = "1"
+// msg.severity = 5
+// msg.facility = 20
+// msg.pri_value = 165
+// msg.syslog_version = "1"
 
-# msg.message_id = "MSGID"
-# msg.hostname = "hostname"
-# msg.appname = "appname"
-# msg.process_id = "PROCID"
+// msg.message_id = "MSGID"
+// msg.hostname = "hostname"
+// msg.appname = "appname"
+// msg.process_id = "PROCID"
 
-# Destroy it when you are done
-# This frees the internal buffer and structured element pointers. You are still responsible for getting rid of
-# the message out parameter if it is heap allocated
+// Destroy it when you are done
+// This frees the internal buffer and structured element pointers. You are still responsible for getting rid of
+// the message out parameter if it is heap allocated
 
 free_syslog_message_t(&msg);
 ```
 
-The vast majority of this library is vested in one function: `parse_syslog_message_t` 
+The vast majority of this library is vested in one function: `parse_syslog_message_t`
 
 ## Installing
 
@@ -52,7 +52,7 @@ make test
 make install
 ```
 
-There should be no outside dependencies required. This will install the library to your system. 
+There should be no outside dependencies required. This will install the library to your system.
 
 To link with it, just provide `-lsyslog` to your linker flags and include the header in files that need it
 
