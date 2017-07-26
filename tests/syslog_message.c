@@ -1,16 +1,18 @@
 #include "test.h"
 
+#define FALSE 0
+
 void test_syslog_message__returns_false_on_garbage(void) {
 	syslog_message_t msg = {};
 
-	cl_assert_(false == parse_syslog_message_t(NULL, &msg), "NULL should not parse");
-	cl_assert_(false == parse_syslog_message_t("", &msg), "Empty string should not parse");
-	cl_assert_(false == parse_syslog_message_t("stuff", &msg), "'stuff' should not parse");
-	cl_assert_(false == parse_syslog_message_t("<abc>stuff", &msg), "'<abc>stuff' should not parse");
-	cl_assert_(false == parse_syslog_message_t("<abc>1 stuff", &msg), "'<abc>1 stuff' should not parse");
-	cl_assert_(false == parse_syslog_message_t("<stuff", &msg), "'<stuff' should not parse");
-	cl_assert_(false == parse_syslog_message_t("\n", &msg), "New line should not parse");
-	cl_assert_(false == parse_syslog_message_t("\t\t\t\t\t\t\t\t\r\n", &msg), "Tabs should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t(NULL, &msg), "NULL should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("", &msg), "Empty string should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("stuff", &msg), "'stuff' should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("<abc>stuff", &msg), "'<abc>stuff' should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("<abc>1 stuff", &msg), "'<abc>1 stuff' should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("<stuff", &msg), "'<stuff' should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("\n", &msg), "New line should not parse");
+	cl_assert_(FALSE == parse_syslog_message_t("\t\t\t\t\t\t\t\t\r\n", &msg), "Tabs should not parse");
 
 }
 

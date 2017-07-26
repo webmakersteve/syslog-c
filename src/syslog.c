@@ -44,7 +44,7 @@ int parse_context_one(syslog_parse_context_t * ctx, char* out) {
   return 0;
 }
 
-size_t parse_context_next_until(syslog_parse_context_t * ctx, char until_char, char* writestr, bool include_eol) {
+size_t parse_context_next_until(syslog_parse_context_t * ctx, char until_char, char* writestr, int include_eol) {
   const char* ptr = strchr(ctx->message + ctx->pointer, until_char);
   if (!ptr && !include_eol) {
     return 0;
@@ -74,8 +74,8 @@ size_t parse_context_next_until(syslog_parse_context_t * ctx, char until_char, c
   return newstr_len;
 }
 
-size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char until_char, char* writestr, bool evaluate_escapes, bool or_eol) {
-  bool escaped = false;
+size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char until_char, char* writestr, int evaluate_escapes, int or_eol) {
+  int escaped = 0;
 
   char c = 0;
   size_t i = 0;
@@ -85,7 +85,7 @@ size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char 
 
     if (escaped) {
       if (c == QUOTE || c == CLOSE_BRACKET || c == ESCAPE) {
-        escaped = false;
+        escaped = 0;
       } else {
         if (evaluate_escapes) {
           // only those 3 characters support escape characters, so we are supposed
@@ -95,7 +95,7 @@ size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char 
         }
       }
     } else if (c == ESCAPE) {
-      escaped = true;
+      escaped = 1;
       if (evaluate_escapes) {
         // to 'resolve' escapes into their escaped char we will
         // avoid appending the escape char to the builder.
@@ -129,7 +129,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
 
   if (start == NIL) {
     // Structured data is nothing. We just want to advance to the separator
-    parse_context_next_until(ctx, SEPARATOR, NULL, true);
+    parse_context_next_until(ctx, SEPARATOR, NULL, 1);
     return 0;
   } else if (start != OPEN_BRACKET) {
     // Structured data must start with an open bracket, so this is invalid
@@ -141,7 +141,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
     parse_context_one(ctx, &pk); // eat [
     // We need to find where structured data ends, but takes escapes into account
 		char* ptr_segment = writestr + intern_pointer;
-		int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, ptr_segment, false, false);
+		int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, ptr_segment, 0, 0);
 
     if (str_len) {
       *num_elements = *num_elements + 1;
@@ -185,7 +185,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 	int intern_pointer = 0;
 
   // SD-ID
-  int id_length = parse_context_next_until_with_escapes(&ctx, SEPARATOR, &element_string[intern_pointer], true, true);
+  int id_length = parse_context_next_until_with_escapes(&ctx, SEPARATOR, &element_string[intern_pointer], 1, 1);
   if (!id_length) {
     return 0;
   }
@@ -215,7 +215,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   size_t num_elements = 0;
   // FIX IT FIX IT FIX IT SHOULD BE DOING INTERNING HERE @TODO
   while (!parse_context_is_eol(&ctx)) {
-		int key_len = parse_context_next_until(&ctx, EQUALS, &element_string[intern_pointer], false);
+		int key_len = parse_context_next_until(&ctx, EQUALS, &element_string[intern_pointer], 0);
     if (!key_len) {
       // Invalid because we need a key and value
       break;
@@ -232,7 +232,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
 		intern_pointer += key_len + 1;
 
-    int val_len = parse_context_next_until_with_escapes(&ctx, QUOTE, &element_string[intern_pointer], true, false);
+    int val_len = parse_context_next_until_with_escapes(&ctx, QUOTE, &element_string[intern_pointer], 1, 0);
     if (!val_len) {
       // No ending quote? What's wrong with you! courtsey of @dareed
       break;
@@ -338,9 +338,9 @@ char* filter_nil(char* s) {
   return s;
 }
 
-bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message) {
+int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) {
   if (!raw_message) {
-    return false;
+    return 0;
   }
 
   syslog_parse_context_t ctx = create_parse_context(raw_message);
@@ -357,16 +357,16 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   char buf = 0;
   if (!parse_context_one(&ctx, &buf) || buf != '<') {
 		free_syslog_message_t(message);
-    return false;
+    return 0;
   }
 
   int intern_pointer = 0;
 
-  int pri_val_length = parse_context_next_until(&ctx, '>', &intern[intern_pointer], false);
+  int pri_val_length = parse_context_next_until(&ctx, '>', &intern[intern_pointer], 0);
   // We do not need the position here. Just check if it worked
   if (!pri_val_length) {
 		free_syslog_message_t(message);
-    return false;
+    return 0;
   }
 
   // Don't forget the null terminator
@@ -377,7 +377,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
   if (pri_value < 0 || pri_value > 191) {
 		free_syslog_message_t(message);
-    return false;
+    return 0;
   }
 
   int facility_id = get_facility_id(pri_value);
@@ -389,10 +389,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   // We are actually done with that string in the intern buffer now
 
   // --- VERSION
-  int syslog_version_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int syslog_version_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!syslog_version_length || syslog_version_length > 2) {
 		free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   message->syslog_version = &intern[intern_pointer];
@@ -400,10 +400,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   intern_pointer += syslog_version_length + 1;
 
   // --- TIMESTAMP
-  int timestamp_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int timestamp_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!timestamp_length) {
 		free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   char* timestamp = &intern[intern_pointer];
@@ -423,10 +423,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 	// We do not need the timestamp anymore either
 
 	// --- HOSTNAME
-  int hostname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int hostname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!hostname_length) {
 		free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   message->hostname = filter_nil(&intern[intern_pointer]);
@@ -434,10 +434,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   intern_pointer += hostname_length + 1;
 
   // --- APP-NAME
-  int appname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int appname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!appname_length) {
 		free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   message->appname = filter_nil(&intern[intern_pointer]);
@@ -446,10 +446,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 
   // --- PROCID
   // surprisingly, can be a string up to 128 chars
-  int process_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int process_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!process_id_length) {
     free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   message->process_id = filter_nil(&intern[intern_pointer]);
@@ -457,10 +457,10 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   intern_pointer += appname_length + 1;
 
   // --- MSGID
-  int message_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], false);
+  int message_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!message_id_length) {
 		free_syslog_message_t(message);
-		return false;
+		return 0;
   }
 
   message->message_id = filter_nil(&intern[intern_pointer]);
@@ -486,7 +486,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
   if (parse_context_is_eol(&ctx)) {
     message->message = NULL;
   } else {
-    int message_size = parse_context_next_until(&ctx, '\0', &intern[intern_pointer], true);
+    int message_size = parse_context_next_until(&ctx, '\0', &intern[intern_pointer], 1);
     message->message = &intern[intern_pointer];
 
 		intern_pointer += message_size + 1;
@@ -499,7 +499,7 @@ bool parse_syslog_message_t(const char* raw_message, syslog_message_t * message)
 	intern = realloc(intern, intern_pointer);
 #endif
 
-	return true;
+	return 1;
 }
 
 void free_syslog_extended_property_value_t(syslog_extended_property_value_t * property_value) {

@@ -1,13 +1,12 @@
 #ifndef BLZ_SYSLOG_H
 #define BLZ_SYSLOG_H
 
+// Needed for sscanf
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h>
 #include <limits.h>
 #include <string.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C"{
@@ -53,7 +52,7 @@ typedef struct syslog_message_t {
 	char* raw_interned_message;
 } syslog_message_t;
 
-bool parse_syslog_message_t(const char*, syslog_message_t*);
+int parse_syslog_message_t(const char*, syslog_message_t*);
 void free_syslog_message_t(syslog_message_t * syslog_message);
 
 #ifdef __cplusplus
