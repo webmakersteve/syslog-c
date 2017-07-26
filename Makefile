@@ -36,8 +36,8 @@ benchmark: $(PROGRAM_NAME) bench/benchmark.c
 
 install: $(PROGRAM_NAME)
 	$(LIBTOOL) --mode=install cp $(PROGRAM_NAME) /usr/local/lib/$(PROGRAM_NAME)
-	mkdir -p /usr/local/include/blizzard
-	cp src/syslog.h /usr/local/include/blizzard/syslog.h
+	mkdir -p /usr/local/include/webmakersteve
+	cp src/syslog.h /usr/local/include/webmakersteve/syslog.h
 
 clar.suite:
 	$(PY) tests/generate.py tests
