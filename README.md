@@ -1,5 +1,7 @@
 # syslog.c - Fast Syslog parser written in C
 
+[![Build Status](https://travis-ci.org/webmakersteve/syslog.c.svg?branch=master)](https://travis-ci.org/webmakersteve/syslog.c)
+
 Copyright (c) Stephen Parente
 
 __syslog.c__ is a fast RFC5424 syslog message parser written in C. It can parse structured data and regular messages into an easy to use struct for your application.
