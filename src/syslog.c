@@ -173,7 +173,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
 
 syslog_parse_context_t create_parse_context(const char* raw_message) {
   // Pointer should automatically be initialized to 0
-  syslog_parse_context_t ctx = { raw_message, 0, 0 >= strlen(raw_message) };
+  syslog_parse_context_t ctx = { raw_message, 0, 0 == strlen(raw_message) };
   return ctx;
 }
 
@@ -187,6 +187,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   // SD-ID
   int id_length = parse_context_next_until_with_escapes(&ctx, SEPARATOR, &element_string[intern_pointer], 1, 1);
   if (!id_length) {
+    free(element_string);
     return 0;
   }
 
