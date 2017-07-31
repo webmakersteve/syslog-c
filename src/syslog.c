@@ -284,7 +284,8 @@ syslog_extended_property_t * get_structured_data(char* structured_data_elements,
   int ep_num = 0;
 	int last_string_size = 0;
 
-  for (size_t i = 0; i < num_elements; i++) {
+  size_t i;
+  for (i = 0; i < num_elements; i++) {
     char* st_element = &structured_data_elements[last_string_size];
     if (parse_structured_data_element(st_element, &properties[ep_num])) {
       ep_num++;
@@ -299,7 +300,8 @@ int get_facility_id(int pri_value) {
   // given a pri-value from a SysLog entry, which is Facility*8+Severity,
   // return the Facility value portion. Which is given by the maximum _priValue
   // that is less than priValue.
-  for (int i = PRI_VALUES_COUNT - 1; i >= 0; i--) {
+  int i;
+  for (i = PRI_VALUES_COUNT - 1; i >= 0; i--) {
     // find the first item in the list, starting from the end, that is less than or equal to the priValue.
     int val = PRI_VALUES[i];
     if (val <= pri_value) {
@@ -512,7 +514,8 @@ void free_syslog_extended_property_t(syslog_extended_property_t * extended_prope
 	// Iterate over that now
 	if (extended_property->num_pairs > 0) {
 		// Okay... we have some pairs
-		for (size_t i = 0; i < extended_property->num_pairs; i++) {
+		size_t i;
+		for (i = 0; i < extended_property->num_pairs; i++) {
 			free_syslog_extended_property_value_t(&extended_property->pairs[i]);
 		}
 
@@ -539,7 +542,8 @@ void free_syslog_message_t(syslog_message_t * msg) {
 	msg->process_id = NULL;
 
   if (msg->structured_data) {
-		for (size_t i = 0; i < msg->structured_data_count; i++) {
+    size_t i;
+		for (i = 0; i < msg->structured_data_count; i++) {
 			free_syslog_extended_property_t(&msg->structured_data[i]);
 		}
 	}
