@@ -36,7 +36,8 @@ void benchmark(int num_messages, bench_clock_t * bench_clock) {
 
 	start_clock(bench_clock);
 
-	for (int i = 0; i < num_messages; i++) {
+	int i;
+	for (i = 0; i < num_messages; i++) {
 		syslog_message_t m = {};
 		if (!parse_syslog_message_t(mm, &m)) {
 			printf("Failed to parse syslog message");
@@ -57,7 +58,8 @@ void benchmark_with_structured_data(int num_messages, bench_clock_t * bench_cloc
 
 	syslog_message_t m = {};
 
-	for (int i = 0; i < num_messages; i++) {
+	int i;
+	for (i = 0; i < num_messages; i++) {
 		if (!parse_syslog_message_t(mm, &m)) {
 			printf("Failed to parse syslog message");
 		} else {
