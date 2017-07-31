@@ -1,3 +1,4 @@
 dist: trusty
 language: c
 script: make && make test
+after_success: make benchmark && ./benchmark
