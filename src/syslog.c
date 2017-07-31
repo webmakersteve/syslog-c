@@ -173,7 +173,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
 
 syslog_parse_context_t create_parse_context(const char* raw_message) {
   // Pointer should automatically be initialized to 0
-  syslog_parse_context_t ctx = { raw_message, 0, 0 >= strlen(raw_message) };
+  syslog_parse_context_t ctx = { raw_message, 0, 0 == strlen(raw_message) };
   return ctx;
 }
 
