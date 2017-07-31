@@ -1,5 +1,5 @@
-#ifndef BLZ_SYSLOG_H
-#define BLZ_SYSLOG_H
+#ifndef LIB_SYSLOG_H
+#define LIB_SYSLOG_H
 
 // Needed for sscanf
 #include <stdio.h>
@@ -21,7 +21,7 @@ typedef struct syslog_extended_property_t {
   char* id;
   syslog_extended_property_value_t * pairs;
   size_t num_pairs;
-	char* raw_interned_message;
+  char* raw_interned_message;
 } syslog_extended_property_t;
 
 typedef struct syslog_message_t {
@@ -49,7 +49,7 @@ typedef struct syslog_message_t {
 
   size_t message_length;
 
-	char* raw_interned_message;
+  char* raw_interned_message;
 } syslog_message_t;
 
 int parse_syslog_message_t(const char*, syslog_message_t*);

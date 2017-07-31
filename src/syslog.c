@@ -104,28 +104,28 @@ size_t parse_context_next_until_with_escapes(syslog_parse_context_t * ctx, char 
     } else if (c == until_char) {
       // an unescaped until_char was found
       writestr[i] = 0;
-			return i;
+      return i;
     }
     // Otherwise add the character
     writestr[i] = c;
 
-		i++;
+    i++;
   }
 
   if (or_eol) {
     return i;
   }
 
-	// Just return a failure here because we didn't really get a string
-	return 0;
+  // Just return a failure here because we didn't really get a string
+  return 0;
 }
 
 int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, char* writestr, size_t * num_elements) {
   char start = 0;
   parse_context_peek(ctx, &start);
 
-	*num_elements = 0;
-	int intern_pointer = 0;
+  *num_elements = 0;
+  int intern_pointer = 0;
 
   if (start == NIL) {
     // Structured data is nothing. We just want to advance to the separator
@@ -136,18 +136,18 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
     return 0;
   }
 
-	char pk = 0;
+  char pk = 0;
   while (parse_context_peek(ctx, &pk) && pk == OPEN_BRACKET) {
     parse_context_one(ctx, &pk); // eat [
     // We need to find where structured data ends, but takes escapes into account
-		char* ptr_segment = writestr + intern_pointer;
-		int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, ptr_segment, 0, 0);
+    char* ptr_segment = writestr + intern_pointer;
+    int str_len = parse_context_next_until_with_escapes(ctx, CLOSE_BRACKET, ptr_segment, 0, 0);
 
     if (str_len) {
       *num_elements = *num_elements + 1;
-			// Increment this intern pointer by the length of the string returned + 1 for the
-			// null terminator
-			intern_pointer += str_len + 1;
+      // Increment this intern pointer by the length of the string returned + 1 for the
+      // null terminator
+      intern_pointer += str_len + 1;
     }
   }
 
@@ -168,7 +168,7 @@ int parse_context_get_structured_data_elements(syslog_parse_context_t * ctx, cha
   // Final character is something else which is bad
   // This means structured data is bad
   *num_elements = 0;
-	return intern_pointer;
+  return intern_pointer;
 }
 
 syslog_parse_context_t create_parse_context(const char* raw_message) {
@@ -180,9 +180,9 @@ syslog_parse_context_t create_parse_context(const char* raw_message) {
 int parse_structured_data_element(char* data_string, syslog_extended_property_t * property) {
   syslog_parse_context_t ctx = create_parse_context(data_string);
 
-	// New write string time
-	char* element_string = calloc(strlen(data_string) * 2, sizeof(char));
-	int intern_pointer = 0;
+  // New write string time
+  char* element_string = calloc(strlen(data_string) * 2, sizeof(char));
+  int intern_pointer = 0;
 
   // SD-ID
   int id_length = parse_context_next_until_with_escapes(&ctx, SEPARATOR, &element_string[intern_pointer], 1, 1);
@@ -191,13 +191,13 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     return 0;
   }
 
-	property->id = &element_string[intern_pointer];
+  property->id = &element_string[intern_pointer];
 
-	// Needs to be saved here so it can be free'd
-	property->raw_interned_message = element_string;
+  // Needs to be saved here so it can be free'd
+  property->raw_interned_message = element_string;
 
-	// Add one for the null terminator
-	intern_pointer += id_length + 1;
+  // Add one for the null terminator
+  intern_pointer += id_length + 1;
 
   if (parse_context_is_eol(&ctx)) {
     // This means the entire thing is the sd_id, as in
@@ -207,16 +207,16 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
     return 1;
   }
 
-	int pair_increment = 4;
-	int allocated_pairs = pair_increment;
+  int pair_increment = 4;
+  int allocated_pairs = pair_increment;
 
-	// @todo Max 12 elements here. We need to make this bigger
+  // @todo Max 12 elements here. We need to make this bigger
   property->pairs = (syslog_extended_property_value_t*) malloc(sizeof(syslog_extended_property_value_t) * allocated_pairs);
 
   size_t num_elements = 0;
   // FIX IT FIX IT FIX IT SHOULD BE DOING INTERNING HERE @TODO
   while (!parse_context_is_eol(&ctx)) {
-		int key_len = parse_context_next_until(&ctx, EQUALS, &element_string[intern_pointer], 0);
+    int key_len = parse_context_next_until(&ctx, EQUALS, &element_string[intern_pointer], 0);
     if (!key_len) {
       // Invalid because we need a key and value
       break;
@@ -229,9 +229,9 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
       break;
     }
 
-		char* key = &element_string[intern_pointer];
+    char* key = &element_string[intern_pointer];
 
-		intern_pointer += key_len + 1;
+    intern_pointer += key_len + 1;
 
     int val_len = parse_context_next_until_with_escapes(&ctx, QUOTE, &element_string[intern_pointer], 1, 0);
     if (!val_len) {
@@ -241,15 +241,15 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
     num_elements++;
 
-		char* value = &element_string[intern_pointer];
+    char* value = &element_string[intern_pointer];
 
-		intern_pointer += val_len + 1;
+    intern_pointer += val_len + 1;
 
-		if (allocated_pairs < num_elements) {
-			allocated_pairs += pair_increment;
+    if (allocated_pairs < num_elements) {
+      allocated_pairs += pair_increment;
 
-			property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
-		}
+      property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
+    }
 
     property->pairs[num_elements - 1] = (syslog_extended_property_value_t) {key, value};
 
@@ -263,13 +263,13 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
 
   property->num_pairs = num_elements;
 
-	// We know how many we have now so we can realloc the entire thing if we need to
+  // We know how many we have now so we can realloc the entire thing if we need to
 #ifdef OPTIMIZE_FOR_MEMORY
-	if (num_elements < allocated_pairs) {
-		allocated_pairs = num_elements + 1;
+  if (num_elements < allocated_pairs) {
+    allocated_pairs = num_elements + 1;
 
-		property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
-	}
+    property->pairs = (syslog_extended_property_value_t*) realloc(property->pairs, sizeof(syslog_extended_property_value_t) * allocated_pairs);
+  }
 #endif
 
   return 1;
@@ -282,7 +282,7 @@ syslog_extended_property_t * get_structured_data(char* structured_data_elements,
   syslog_extended_property_t * properties = (syslog_extended_property_t*) malloc(sizeof(syslog_extended_property_t) * num_elements + 1);
 
   int ep_num = 0;
-	int last_string_size = 0;
+  int last_string_size = 0;
 
   size_t i;
   for (i = 0; i < num_elements; i++) {
@@ -290,7 +290,7 @@ syslog_extended_property_t * get_structured_data(char* structured_data_elements,
     if (parse_structured_data_element(st_element, &properties[ep_num])) {
       ep_num++;
     }
-		last_string_size = strlen(st_element) + 1;
+    last_string_size = strlen(st_element) + 1;
   }
 
   return properties;
@@ -354,12 +354,12 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   message->raw_interned_message = calloc(allocation_size, sizeof(char));
 
   // Just keep this for ease of access
-	char* intern = message->raw_interned_message;
+  char* intern = message->raw_interned_message;
 
   // --- PRI
   char buf = 0;
   if (!parse_context_one(&ctx, &buf) || buf != '<') {
-		free_syslog_message_t(message);
+    free_syslog_message_t(message);
     return 0;
   }
 
@@ -368,7 +368,7 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   int pri_val_length = parse_context_next_until(&ctx, '>', &intern[intern_pointer], 0);
   // We do not need the position here. Just check if it worked
   if (!pri_val_length) {
-		free_syslog_message_t(message);
+    free_syslog_message_t(message);
     return 0;
   }
 
@@ -379,7 +379,7 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   int pri_value = atoi(&intern[0]);
 
   if (pri_value < 0 || pri_value > 191) {
-		free_syslog_message_t(message);
+    free_syslog_message_t(message);
     return 0;
   }
 
@@ -394,8 +394,8 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   // --- VERSION
   int syslog_version_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!syslog_version_length || syslog_version_length > 2) {
-		free_syslog_message_t(message);
-		return 0;
+    free_syslog_message_t(message);
+    return 0;
   }
 
   message->syslog_version = &intern[intern_pointer];
@@ -405,13 +405,13 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   // --- TIMESTAMP
   int timestamp_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!timestamp_length) {
-		free_syslog_message_t(message);
-		return 0;
+    free_syslog_message_t(message);
+    return 0;
   }
 
   char* timestamp = &intern[intern_pointer];
 
-	if (timestamp_length == 1 && timestamp[0] == NIL) {
+  if (timestamp_length == 1 && timestamp[0] == NIL) {
     // This means we want to get the current time
     time_t rawtime;
     time(&rawtime);
@@ -423,13 +423,13 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
 
   intern_pointer += timestamp_length + 1;
 
-	// We do not need the timestamp anymore either
+  // We do not need the timestamp anymore either
 
-	// --- HOSTNAME
+  // --- HOSTNAME
   int hostname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!hostname_length) {
-		free_syslog_message_t(message);
-		return 0;
+    free_syslog_message_t(message);
+    return 0;
   }
 
   message->hostname = filter_nil(&intern[intern_pointer]);
@@ -439,8 +439,8 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   // --- APP-NAME
   int appname_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!appname_length) {
-		free_syslog_message_t(message);
-		return 0;
+    free_syslog_message_t(message);
+    return 0;
   }
 
   message->appname = filter_nil(&intern[intern_pointer]);
@@ -452,7 +452,7 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   int process_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!process_id_length) {
     free_syslog_message_t(message);
-		return 0;
+    return 0;
   }
 
   message->process_id = filter_nil(&intern[intern_pointer]);
@@ -462,8 +462,8 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   // --- MSGID
   int message_id_length = parse_context_next_until(&ctx, SEPARATOR, &intern[intern_pointer], 0);
   if (!message_id_length) {
-		free_syslog_message_t(message);
-		return 0;
+    free_syslog_message_t(message);
+    return 0;
   }
 
   message->message_id = filter_nil(&intern[intern_pointer]);
@@ -471,7 +471,7 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
   intern_pointer += message_id_length + 1;
 
   size_t num_structured_data;
-	int buf_size = parse_context_get_structured_data_elements(&ctx, &intern[intern_pointer], &num_structured_data);
+  int buf_size = parse_context_get_structured_data_elements(&ctx, &intern[intern_pointer], &num_structured_data);
 
   if (num_structured_data < 1) {
     message->structured_data = NULL;
@@ -481,8 +481,8 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
     message->structured_data = get_structured_data(&intern[intern_pointer], num_structured_data);
   }
 
-	// No matter what we need to increment the intern pointer here. Because we used the string.
-	intern_pointer += buf_size + 1;
+  // No matter what we need to increment the intern pointer here. Because we used the string.
+  intern_pointer += buf_size + 1;
 
   // --- MSG
   // Rest of the data is the message
@@ -492,68 +492,68 @@ int parse_syslog_message_t(const char* raw_message, syslog_message_t * message) 
     int message_size = parse_context_next_until(&ctx, '\0', &intern[intern_pointer], 1);
     message->message = &intern[intern_pointer];
 
-		intern_pointer += message_size + 1;
+    intern_pointer += message_size + 1;
   }
 
   intern[intern_pointer] = 0;
 
 #ifdef OPTIMIZE_FOR_MEMORY
-	// This is the real length of the string so we can realloc it
-	intern = realloc(intern, intern_pointer);
+  // This is the real length of the string so we can realloc it
+  intern = realloc(intern, intern_pointer);
 #endif
 
-	return 1;
+  return 1;
 }
 
 void free_syslog_extended_property_value_t(syslog_extended_property_value_t * property_value) {
-	property_value->key = NULL;
-	property_value->value = NULL;
+  property_value->key = NULL;
+  property_value->value = NULL;
 }
 
 void free_syslog_extended_property_t(syslog_extended_property_t * extended_property) {
-	// Iterate over that now
-	if (extended_property->num_pairs > 0) {
-		// Okay... we have some pairs
-		size_t i;
-		for (i = 0; i < extended_property->num_pairs; i++) {
-			free_syslog_extended_property_value_t(&extended_property->pairs[i]);
-		}
+  // Iterate over that now
+  if (extended_property->num_pairs > 0) {
+    // Okay... we have some pairs
+    size_t i;
+    for (i = 0; i < extended_property->num_pairs; i++) {
+      free_syslog_extended_property_value_t(&extended_property->pairs[i]);
+    }
 
-		free(extended_property->pairs);
-	}
-	extended_property->pairs = NULL;
+    free(extended_property->pairs);
+  }
+  extended_property->pairs = NULL;
 
-	// Null the chair pointer
-	extended_property->id = NULL;
+  // Null the chair pointer
+  extended_property->id = NULL;
 
-	free(extended_property->raw_interned_message);
+  free(extended_property->raw_interned_message);
 }
 
 void free_syslog_message_t(syslog_message_t * msg) {
-	// Essentially we need to iterate over the fields that have been malloc'd and free them
-	// Just a helper utility since the structure is slightly complicated
+  // Essentially we need to iterate over the fields that have been malloc'd and free them
+  // Just a helper utility since the structure is slightly complicated
 
-	// Null all the char pointers
-	msg->message = NULL;
-	msg->syslog_version = NULL;
-	msg->message_id = NULL;
-	msg->hostname = NULL;
-	msg->appname = NULL;
-	msg->process_id = NULL;
+  // Null all the char pointers
+  msg->message = NULL;
+  msg->syslog_version = NULL;
+  msg->message_id = NULL;
+  msg->hostname = NULL;
+  msg->appname = NULL;
+  msg->process_id = NULL;
 
   if (msg->structured_data) {
     size_t i;
-		for (i = 0; i < msg->structured_data_count; i++) {
-			free_syslog_extended_property_t(&msg->structured_data[i]);
-		}
-	}
+    for (i = 0; i < msg->structured_data_count; i++) {
+      free_syslog_extended_property_t(&msg->structured_data[i]);
+    }
+  }
 
   free(msg->structured_data);
 
   msg->structured_data = NULL;
 
-	// Free the raw interned message
-	free(msg->raw_interned_message);
+  // Free the raw interned message
+  free(msg->raw_interned_message);
 
   msg->raw_interned_message = NULL;
 }

@@ -6,11 +6,11 @@ int __cdecl main(int argc, char *argv[])
 int main(int argc, char *argv[])
 #endif
 {
-	int res;
+  int res;
 
-	clar_test_init(argc, argv);
-	res = clar_test_run();
-	clar_test_shutdown();
+  clar_test_init(argc, argv);
+  res = clar_test_run();
+  clar_test_shutdown();
 
-	return res;
+  return res;
 }
