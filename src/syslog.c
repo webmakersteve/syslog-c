@@ -187,6 +187,7 @@ int parse_structured_data_element(char* data_string, syslog_extended_property_t 
   // SD-ID
   int id_length = parse_context_next_until_with_escapes(&ctx, SEPARATOR, &element_string[intern_pointer], 1, 1);
   if (!id_length) {
+    free(element_string);
     return 0;
   }
 
